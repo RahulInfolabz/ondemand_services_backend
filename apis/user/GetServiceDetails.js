@@ -5,6 +5,9 @@ async function GetServiceDetails(req, res) {
   try {
     const { id } = req.params;
 
+    console.log(id);
+
+
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -29,6 +32,9 @@ async function GetServiceDetails(req, res) {
         { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
       ])
       .toArray();
+
+    console.log(serviceDetails);
+
 
     if (!serviceDetails.length) {
       return res.status(404).json({
