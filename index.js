@@ -46,6 +46,8 @@ const { UpdateBooking } = require("./apis/admin/UpdateBooking");
 const { GetPayments } = require("./apis/admin/GetPayments");
 const { GetAdminFeedbacks } = require("./apis/admin/GetFeedbacks");
 const { DashboardStats } = require("./apis/admin/DashboardStats");
+const MongoSessionStore = require("./db/MongoSessionStore");
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -59,14 +61,20 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET || "ondemand_platform_secret",
     resave: false,
-    saveUninitialized: true,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 }, // 1 day
+    saveUninitialized: false,
+    store: new MongoSessionStore(),
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      httpOnly: true,
+      secure: true,     // required on Render (HTTPS)
+      sameSite: "none", // required for cross-domain requests
+    },
   })
 );
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174"],
+    origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174", "https://ondemand-services-backend.onrender.com"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
   })
