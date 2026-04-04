@@ -47,8 +47,6 @@ const { GetPayments } = require("./apis/admin/GetPayments");
 const { GetAdminFeedbacks } = require("./apis/admin/GetFeedbacks");
 const { DashboardStats } = require("./apis/admin/DashboardStats");
 const MongoSessionStore = require("./db/MongoSessionStore");
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 const app = express();
@@ -57,6 +55,7 @@ const PORT = process.env.PORT || 8000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ── Session Config ────────────────────────────────────────────────────────────
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "ondemand_platform_secret",
@@ -65,9 +64,9 @@ app.use(
     store: new MongoSessionStore(),
     cookie: {
       maxAge: 1000 * 60 * 60 * 24, // 1 day
-      httpOnly: true,
-      secure: true,     // required on Render (HTTPS)
-      sameSite: "none", // required for cross-domain requests
+      httpOnly: false,  // ← changed
+      secure: false,    // ← changed
+      sameSite: "lax",  // ← changed
     },
   })
 );
@@ -79,6 +78,17 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
+
+// ── x-session-id Middleware ───────────────────────────────────────────────────
+// Allows session ID to be passed via header instead of cookie
+// (required for Render.com and Thunder Client testing)
+app.use((req, res, next) => {
+  const sidFromHeader = req.headers["x-session-id"];
+  if (sidFromHeader) {
+    req.headers.cookie = `connect.sid=${sidFromHeader}`;
+  }
+  next();
+});
 
 // ── Static File Serving ───────────────────────────────────────────────────────
 app.use("/uploads/categories", express.static("uploads/categories"));

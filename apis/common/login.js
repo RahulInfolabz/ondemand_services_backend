@@ -37,6 +37,7 @@ async function Login(req, res) {
       userData,
       success: true,
       message: "Login successful",
+      sessionId: req.sessionID, // ← only this line added
     });
   } catch (error) {
     console.error("login.js: ", error);
