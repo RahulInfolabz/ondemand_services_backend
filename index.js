@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-const session = require("express-session");
 const connectDB = require("./db/dbConnect");
+const authMiddleware = require("./middleware/auth");
 require("dotenv").config();
 
 // ── Multer Instances ──────────────────────────────────────────────────────────
@@ -46,49 +46,25 @@ const { UpdateBooking } = require("./apis/admin/UpdateBooking");
 const { GetPayments } = require("./apis/admin/GetPayments");
 const { GetAdminFeedbacks } = require("./apis/admin/GetFeedbacks");
 const { DashboardStats } = require("./apis/admin/DashboardStats");
-const MongoSessionStore = require("./db/MongoSessionStore");
-// ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
 const app = express();
 const PORT = process.env.PORT || 8000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ── Session Config ────────────────────────────────────────────────────────────
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "ondemand_platform_secret",
-    resave: false,
-    saveUninitialized: false,
-    store: new MongoSessionStore(),
-    cookie: {
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-      httpOnly: false,  // ← changed
-      secure: false,    // ← changed
-      sameSite: "lax",  // ← changed
-    },
-  })
-);
-
-app.use(
-  cors({
-    origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174", "https://ondemand-services-backend.onrender.com"],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-  })
-);
-
-// ── x-session-id Middleware ───────────────────────────────────────────────────
-// Allows session ID to be passed via header instead of cookie
-// (required for Render.com and Thunder Client testing)
-app.use((req, res, next) => {
-  const sidFromHeader = req.headers["x-session-id"];
-  if (sidFromHeader) {
-    req.headers.cookie = `connect.sid=${sidFromHeader}`;
-  }
-  next();
-});
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://your-frontend.onrender.com", // ← replace with your actual frontend URL
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+}));
 
 // ── Static File Serving ───────────────────────────────────────────────────────
 app.use("/uploads/categories", express.static("uploads/categories"));
@@ -111,51 +87,40 @@ app.post("/changePassword", ChangePassword);
 //  PUBLIC APIs (no auth required)
 // ─────────────────────────────────────────────────────────────────────────────
 app.get("/categories", GetCategories);
-// filters: ?category_id= ?min_price= ?max_price=
 app.get("/services", GetServices);
 app.get("/services/:id", GetServiceDetails);
 app.get("/feedbacks", GetFeedbacks);
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  USER APIs (session required)
+//  USER APIs (JWT required)
 // ─────────────────────────────────────────────────────────────────────────────
-app.get("/user/profile", GetProfile);
-app.post("/user/updateProfile", profileUpload.single("profile_image"), UpdateProfile);
-app.post("/user/bookService", BookService);
-app.get("/user/myBookings", MyBookings);
-app.post("/user/cancelBooking", CancelBooking);
-app.post("/user/genOrderId", GenOrderId);
-app.post("/user/verifyPayment", VerifyPayment);
-app.post("/user/addFeedback", AddFeedback);
+app.get("/user/profile", authMiddleware, GetProfile);
+app.post("/user/updateProfile", authMiddleware, profileUpload.single("profile_image"), UpdateProfile);
+app.post("/user/bookService", authMiddleware, BookService);
+app.get("/user/myBookings", authMiddleware, MyBookings);
+app.post("/user/cancelBooking", authMiddleware, CancelBooking);
+app.post("/user/genOrderId", authMiddleware, GenOrderId);
+app.post("/user/verifyPayment", authMiddleware, VerifyPayment);
+app.post("/user/addFeedback", authMiddleware, AddFeedback);
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  ADMIN APIs (session required)
+//  ADMIN APIs (JWT required)
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Users
-app.get("/admin/users", GetUsers);
-app.post("/admin/updateUserStatus", UpdateUserStatus);
-
-// Categories
-app.post("/admin/addCategory", categoryUpload.single("image"), AddCategory);
-app.post("/admin/updateCategory", categoryUpload.single("image"), UpdateCategory);
-app.get("/admin/deleteCategory/:id", DeleteCategory);
-app.get("/admin/categories", GetAdminCategories);
-
-// Services
-app.post("/admin/addService", serviceUpload.single("image"), AddService);
-app.post("/admin/updateService", serviceUpload.single("image"), UpdateService);
-app.get("/admin/deleteService/:id", DeleteService);
-app.get("/admin/services", GetAdminServices);
-
-// Bookings
-app.get("/admin/bookings", GetBookings);
-app.post("/admin/updateBooking", UpdateBooking);
-
-// Reports
-app.get("/admin/payments", GetPayments);
-app.get("/admin/feedbacks", GetAdminFeedbacks);
-app.get("/admin/dashboardStats", DashboardStats);
+app.get("/admin/users", authMiddleware, GetUsers);
+app.post("/admin/updateUserStatus", authMiddleware, UpdateUserStatus);
+app.post("/admin/addCategory", authMiddleware, categoryUpload.single("image"), AddCategory);
+app.post("/admin/updateCategory", authMiddleware, categoryUpload.single("image"), UpdateCategory);
+app.get("/admin/deleteCategory/:id", authMiddleware, DeleteCategory);
+app.get("/admin/categories", authMiddleware, GetAdminCategories);
+app.post("/admin/addService", authMiddleware, serviceUpload.single("image"), AddService);
+app.post("/admin/updateService", authMiddleware, serviceUpload.single("image"), UpdateService);
+app.get("/admin/deleteService/:id", authMiddleware, DeleteService);
+app.get("/admin/services", authMiddleware, GetAdminServices);
+app.get("/admin/bookings", authMiddleware, GetBookings);
+app.post("/admin/updateBooking", authMiddleware, UpdateBooking);
+app.get("/admin/payments", authMiddleware, GetPayments);
+app.get("/admin/feedbacks", authMiddleware, GetAdminFeedbacks);
+app.get("/admin/dashboardStats", authMiddleware, DashboardStats);
 
 app.get("/", (req, res) => {
   res.send("Welcome to On-Demand Service Platform API!");

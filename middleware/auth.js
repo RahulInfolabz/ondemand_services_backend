@@ -1,29 +1,26 @@
 const jwt = require("jsonwebtoken");
 
-function Session(req, res) {
+function authMiddleware(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: "No active session",
+      message: "Unauthorized access",
     });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    return res.status(200).json({
-      success: true,
-      message: "Session active",
-      userData: { session: decoded, isAuth: true },
-    });
+    req.user = decoded; // { _id, name, email, role, status }
+    next();
   } catch {
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired session",
+      message: "Invalid or expired token",
     });
   }
 }
 
-module.exports = Session;
+module.exports = authMiddleware;

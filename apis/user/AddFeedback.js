@@ -3,54 +3,32 @@ const connectDB = require("../../db/dbConnect");
 
 async function AddFeedback(req, res) {
   try {
-    const user = req.session.user;
-    if (!user || !user.isAuth || user.session.role !== "User") {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized access",
-      });
-    }
-
     const { booking_id, service_id, rating, feedback } = req.body;
 
     if (!booking_id || !service_id || !rating || !feedback) {
-      return res.status(400).json({
-        success: false,
-        message: "Booking ID, service ID, rating and feedback are required",
-      });
+      return res.status(400).json({ success: false, message: "Booking ID, service ID, rating and feedback are required" });
     }
 
     if (!ObjectId.isValid(booking_id) || !ObjectId.isValid(service_id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid booking or service ID",
-      });
+      return res.status(400).json({ success: false, message: "Invalid booking or service ID" });
     }
 
     if (rating < 1 || rating > 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be between 1 and 5",
-      });
+      return res.status(400).json({ success: false, message: "Rating must be between 1 and 5" });
     }
 
     const db = await connectDB();
-
-    // Verify booking belongs to this user
     const booking = await db.collection("bookings").findOne({
       _id: new ObjectId(booking_id),
-      user_id: new ObjectId(user.session._id),
+      user_id: new ObjectId(req.user._id),
     });
 
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found",
-      });
+      return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
     await db.collection("feedbacks").insertOne({
-      user_id: new ObjectId(user.session._id),
+      user_id: new ObjectId(req.user._id),
       booking_id: new ObjectId(booking_id),
       service_id: new ObjectId(service_id),
       rating: parseFloat(rating),
@@ -58,16 +36,10 @@ async function AddFeedback(req, res) {
       datetime: new Date(),
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Feedback submitted successfully",
-    });
+    return res.status(201).json({ success: true, message: "Feedback submitted successfully" });
   } catch (error) {
     console.error("AddFeedback.js: ", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 }
 

@@ -1,4 +1,5 @@
 const connectDB = require("../../db/dbConnect");
+const jwt = require("jsonwebtoken");
 
 async function Login(req, res) {
   try {
@@ -29,15 +30,24 @@ async function Login(req, res) {
       });
     }
 
-    // Create session
-    req.session.user = { session: user, isAuth: true };
-    const userData = req.session.user;
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     return res.status(200).json({
-      userData,
       success: true,
       message: "Login successful",
-      sessionId: req.sessionID, // ← only this line added
+      token,
+      userData: { session: user, isAuth: true },
     });
   } catch (error) {
     console.error("login.js: ", error);
