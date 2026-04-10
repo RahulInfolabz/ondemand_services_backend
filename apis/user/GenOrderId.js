@@ -11,7 +11,7 @@ async function GenOrderId(req, res) {
   try {
     const { booking_id } = req.body;
 
-    if (!booking_id || !ObjectId.isValid(booking_id)) {
+    if (!booking_id) {
       return res.status(400).json({ success: false, message: "Valid booking ID is required" });
     }
 
